@@ -20,10 +20,13 @@ exports.createInterview = async (req,res)=>{
   res.json(interview);
 
  }catch(err){
-  res.status(500).json(err);
+  console.log(err);
+  res.status(500).json({message:"Server error"});
  }
 
 };
+
+
 exports.getCandidateInterview = async (req,res)=>{
 
  try{
@@ -35,7 +38,8 @@ exports.getCandidateInterview = async (req,res)=>{
   res.json(interview);
 
  }catch(err){
-  res.status(500).json(err);
+  console.log(err);
+  res.status(500).json({message:"Server error"});
  }
 
 };
