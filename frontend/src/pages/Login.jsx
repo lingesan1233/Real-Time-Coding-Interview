@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "axios";
+import { loginUser } from "../services/api";
 
 function Login() {
 
@@ -10,13 +10,12 @@ function Login() {
 
     try {
 
-      const res = await axios.post(
-        "http://localhost:5000/api/auth/login",
-        { email, password }
-      );
+      const res = await loginUser({
+        email,
+        password
+      });
 
       localStorage.setItem("token", res.data.token);
-
       localStorage.setItem("user", JSON.stringify(res.data.user));
 
       if (res.data.user.role === "admin") {
@@ -25,8 +24,10 @@ function Login() {
         window.location = "/candidate";
       }
 
-    } catch (err) {
-      alert("Login Failed");
+    } catch (error) {
+
+      alert("Invalid email or password");
+
     }
 
   };
@@ -38,6 +39,7 @@ function Login() {
       <h2>Login</h2>
 
       <input
+        type="email"
         placeholder="Email"
         onChange={(e) => setEmail(e.target.value)}
       />
