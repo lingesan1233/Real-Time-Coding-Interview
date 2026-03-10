@@ -1,11 +1,11 @@
-import {useParams} from "react-router-dom";
+import { useParams } from "react-router-dom";
 import CodeEditor from "../components/CodeEditor";
 import VideoCall from "../components/VideoCall";
 import Chat from "../components/Chat";
 
 function InterviewRoom(){
 
-const {roomId} = useParams();
+const { roomId } = useParams();
 
 return(
 
@@ -13,7 +13,7 @@ return(
 
 <h2>Interview Room</h2>
 
-<VideoCall/>
+<VideoCall roomId={roomId}/>
 
 <CodeEditor roomId={roomId}/>
 
