@@ -11,11 +11,12 @@ module.exports = (io) => {
       const clients = io.sockets.adapter.rooms.get(roomId);
       const numClients = clients ? clients.size : 0;
 
-      if(numClients > 1){
-        socket.to(roomId).emit("userJoined");
-      }
+      console.log("Users in room:", numClients);
 
-      console.log("User joined room:", roomId);
+      // when second user joins
+      if (numClients === 2) {
+        io.to(roomId).emit("ready");
+      }
 
     });
 
