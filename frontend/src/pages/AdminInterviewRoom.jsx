@@ -5,7 +5,7 @@ import Editor from "@monaco-editor/react";
 
 const socket = io("https://real-time-coding-interview-h6in.onrender.com");
 
-export default function AdminInterviewRoom() {
+export default function AdminInterviewRoom(){
 
 const { roomId } = useParams();
 
@@ -14,14 +14,12 @@ const remoteVideo = useRef();
 const screenVideo = useRef();
 
 const peerConnection = useRef();
-const localStream = useRef();
 
 const [task,setTask] = useState("");
 const [candidateCode,setCandidateCode] = useState("");
 const [screenActive,setScreenActive] = useState(false);
 
 useEffect(()=>{
-
 startVideo();
 
 socket.on("receive-submission",(data)=>{
@@ -37,10 +35,7 @@ video:true,
 audio:true
 });
 
-localStream.current = stream;
 localVideo.current.srcObject = stream;
-
-socket.emit("join-room",roomId);
 
 peerConnection.current = new RTCPeerConnection();
 
@@ -67,15 +62,7 @@ socket.emit("ice-candidate",{roomId,candidate:event.candidate});
 }
 };
 
-peerConnection.current.onnegotiationneeded = async () => {
-
-const offer = await peerConnection.current.createOffer();
-
-await peerConnection.current.setLocalDescription(offer);
-
-socket.emit("offer",{roomId,offer});
-
-};
+socket.emit("join-room",roomId);
 
 socket.on("user-joined",async()=>{
 
@@ -95,9 +82,25 @@ socket.on("ice-candidate",async(candidate)=>{
 await peerConnection.current.addIceCandidate(candidate);
 });
 
+socket.on("renegotiate-offer", async (offer)=>{
+
+await peerConnection.current.setRemoteDescription(offer);
+
+const answer = await peerConnection.current.createAnswer();
+
+await peerConnection.current.setLocalDescription(answer);
+
+socket.emit("renegotiate-answer",{roomId,answer});
+
+});
+
+socket.on("renegotiate-answer", async (answer)=>{
+await peerConnection.current.setRemoteDescription(answer);
+});
+
 };
 
-socket.on("offer", async (offer) => {
+socket.on("offer", async (offer)=>{
 
 await peerConnection.current.setRemoteDescription(offer);
 
@@ -118,6 +121,12 @@ video:true
 const screenTrack = screenStream.getVideoTracks()[0];
 
 peerConnection.current.addTrack(screenTrack,screenStream);
+
+const offer = await peerConnection.current.createOffer();
+
+await peerConnection.current.setLocalDescription(offer);
+
+socket.emit("renegotiate-offer",{roomId,offer});
 
 setScreenActive(true);
 
@@ -157,8 +166,14 @@ return(
 ref={screenVideo}
 autoPlay
 playsInline
-width="600"
+width="650"
 />
+
+<br/>
+
+<button onClick={()=>screenVideo.current.requestFullscreen()}>
+Maximize Screen
+</button>
 
 </div>
 

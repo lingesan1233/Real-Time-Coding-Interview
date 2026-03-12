@@ -73,6 +73,22 @@ module.exports = function (io) {
 
 
     // =========================
+    // SCREEN SHARE RENEGOTIATION
+    // =========================
+    socket.on("renegotiate-offer", (data) => {
+
+      socket.to(data.roomId).emit("renegotiate-offer", data.offer);
+
+    });
+
+    socket.on("renegotiate-answer", (data) => {
+
+      socket.to(data.roomId).emit("renegotiate-answer", data.answer);
+
+    });
+
+
+    // =========================
     // DISCONNECT
     // =========================
     socket.on("disconnect", () => {

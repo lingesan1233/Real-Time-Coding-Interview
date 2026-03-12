@@ -30,7 +30,6 @@ setTask(task);
 
 const startVideo = async ()=>{
 
-// get candidate camera
 const stream = await navigator.mediaDevices.getUserMedia({
 video:true,
 audio:true
@@ -38,42 +37,32 @@ audio:true
 
 localVideo.current.srcObject = stream;
 
-// create peer connection
 peerConnection.current = new RTCPeerConnection();
 
-// add local tracks
 stream.getTracks().forEach(track=>{
 peerConnection.current.addTrack(track,stream);
 });
 
-// receive admin camera / screen
-peerConnection.current.ontrack = (event)=>{
+peerConnection.current.ontrack=(event)=>{
 
-const incomingStream = event.streams[0];
+const stream = event.streams[0];
 
 if(!remoteVideo.current.srcObject){
-remoteVideo.current.srcObject = incomingStream;
+remoteVideo.current.srcObject = stream;
 }else{
-screenVideo.current.srcObject = incomingStream;
+screenVideo.current.srcObject = stream;
 setScreenActive(true);
 }
 
 };
 
-// send ICE candidates
-peerConnection.current.onicecandidate = (event)=>{
+peerConnection.current.onicecandidate=(event)=>{
 if(event.candidate){
 socket.emit("ice-candidate",{roomId,candidate:event.candidate});
 }
 };
 
-// join room
 socket.emit("join-room",roomId);
-
-
-// =========================
-// RECEIVE ADMIN OFFER
-// =========================
 
 socket.on("offer", async (offer)=>{
 
@@ -87,25 +76,27 @@ socket.emit("answer",{roomId,answer});
 
 });
 
-
-// =========================
-// RECEIVE ICE
-// =========================
-
 socket.on("ice-candidate", async (candidate)=>{
-try{
 await peerConnection.current.addIceCandidate(candidate);
-}catch(e){
-console.error(e);
-}
+});
+
+socket.on("renegotiate-offer", async (offer)=>{
+
+await peerConnection.current.setRemoteDescription(offer);
+
+const answer = await peerConnection.current.createAnswer();
+
+await peerConnection.current.setLocalDescription(answer);
+
+socket.emit("renegotiate-answer",{roomId,answer});
+
+});
+
+socket.on("renegotiate-answer", async (answer)=>{
+await peerConnection.current.setRemoteDescription(answer);
 });
 
 };
-
-
-// =========================
-// SCREEN SHARE
-// =========================
 
 const shareScreen = async ()=>{
 
@@ -117,14 +108,15 @@ const screenTrack = screenStream.getVideoTracks()[0];
 
 peerConnection.current.addTrack(screenTrack,screenStream);
 
+const offer = await peerConnection.current.createOffer();
+
+await peerConnection.current.setLocalDescription(offer);
+
+socket.emit("renegotiate-offer",{roomId,offer});
+
 setScreenActive(true);
 
 };
-
-
-// =========================
-// SUBMIT CODE
-// =========================
 
 const submitCode = ()=>{
 socket.emit("submit-code",{roomId,code});
@@ -140,12 +132,12 @@ return(
 
 <div>
 <h4>Your Camera</h4>
-<video ref={localVideo} autoPlay playsInline muted width="250"/>
+<video ref={localVideo} autoPlay muted width="250"/>
 </div>
 
 <div>
 <h4>Admin Camera</h4>
-<video ref={remoteVideo} autoPlay playsInline width="250"/>
+<video ref={remoteVideo} autoPlay width="250"/>
 </div>
 
 </div>
@@ -160,8 +152,14 @@ return(
 ref={screenVideo}
 autoPlay
 playsInline
-width="600"
+width="650"
 />
+
+<br/>
+
+<button onClick={()=>screenVideo.current.requestFullscreen()}>
+Maximize Screen
+</button>
 
 </div>
 
