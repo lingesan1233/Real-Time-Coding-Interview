@@ -43,15 +43,20 @@ stream.getTracks().forEach(track=>{
 peerConnection.current.addTrack(track,stream);
 });
 
-peerConnection.current.ontrack=(event)=>{
+peerConnection.current.ontrack = (event)=>{
 
-const stream = event.streams[0];
+const track = event.track;
+const stream = new MediaStream([track]);
+
+if(track.kind === "video"){
 
 if(!remoteVideo.current.srcObject){
 remoteVideo.current.srcObject = stream;
 }else{
 screenVideo.current.srcObject = stream;
 setScreenActive(true);
+}
+
 }
 
 };
@@ -74,6 +79,10 @@ await peerConnection.current.setLocalDescription(answer);
 
 socket.emit("answer",{roomId,answer});
 
+});
+
+socket.on("answer", async (answer)=>{
+await peerConnection.current.setRemoteDescription(answer);
 });
 
 socket.on("ice-candidate", async (candidate)=>{
@@ -132,12 +141,12 @@ return(
 
 <div>
 <h4>Your Camera</h4>
-<video ref={localVideo} autoPlay muted width="250"/>
+<video ref={localVideo} autoPlay playsInline muted width="250"/>
 </div>
 
 <div>
 <h4>Admin Camera</h4>
-<video ref={remoteVideo} autoPlay width="250"/>
+<video ref={remoteVideo} autoPlay playsInline width="250"/>
 </div>
 
 </div>
@@ -148,12 +157,7 @@ return(
 
 <h4>Shared Screen</h4>
 
-<video
-ref={screenVideo}
-autoPlay
-playsInline
-width="650"
-/>
+<video ref={screenVideo} autoPlay playsInline width="650"/>
 
 <br/>
 
