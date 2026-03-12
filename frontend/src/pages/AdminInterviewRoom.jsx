@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import io from "socket.io-client";
 
-const socket = io("https://your-backend-url.com");
+const socket = io("https://real-time-coding-interview-h6in.onrender.com");
 
 export default function AdminInterviewRoom() {
 
