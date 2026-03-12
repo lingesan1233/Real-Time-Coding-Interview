@@ -1,5 +1,5 @@
 import axios from "axios";
 
 export default axios.create({
-baseURL:"https://real-time-coding-interview-1lgy.onrender.com/api"
+baseURL:"https://real-time-coding-interview-h6in.onrender.com/api"
 });

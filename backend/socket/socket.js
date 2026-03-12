@@ -2,41 +2,30 @@ module.exports = function (io) {
 
   io.on("connection", (socket) => {
 
-    console.log("User Connected:", socket.id);
+    console.log("User connected:", socket.id);
 
-    // Join interview room
     socket.on("join-room", (roomId) => {
       socket.join(roomId);
-      console.log("Joined room:", roomId);
+      socket.to(roomId).emit("user-joined");
     });
 
-    // Live code collaboration
-    socket.on("code-change", (data) => {
-      socket.to(data.roomId).emit("code-change", data.code);
+    // WebRTC offer
+    socket.on("offer", (data) => {
+      socket.to(data.roomId).emit("offer", data.offer);
     });
 
-    // Task update from admin
-    socket.on("task-update", (data) => {
-      socket.to(data.roomId).emit("task-update", data.task);
+    // WebRTC answer
+    socket.on("answer", (data) => {
+      socket.to(data.roomId).emit("answer", data.answer);
     });
 
-    // Chat message
-    socket.on("send-message", (data) => {
-      socket.to(data.roomId).emit("receive-message", data);
-    });
-
-    // Candidate submits code
-    socket.on("submit-code", (data) => {
-      socket.to(data.roomId).emit("candidate-submitted", data);
-    });
-
-    // Admin ends meeting
-    socket.on("end-meeting", (roomId) => {
-      io.to(roomId).emit("meeting-ended");
+    // ICE candidates
+    socket.on("ice-candidate", (data) => {
+      socket.to(data.roomId).emit("ice-candidate", data.candidate);
     });
 
     socket.on("disconnect", () => {
-      console.log("User disconnected:", socket.id);
+      console.log("User disconnected");
     });
 
   });
