@@ -43,7 +43,7 @@ module.exports = function (io) {
 
 
     // =========================
-    // WEBRTC OFFER
+    // WEBRTC INITIAL OFFER
     // =========================
     socket.on("offer", (data) => {
 
@@ -53,7 +53,7 @@ module.exports = function (io) {
 
 
     // =========================
-    // WEBRTC ANSWER
+    // WEBRTC INITIAL ANSWER
     // =========================
     socket.on("answer", (data) => {
 
@@ -68,6 +68,26 @@ module.exports = function (io) {
     socket.on("ice-candidate", (data) => {
 
       socket.to(data.roomId).emit("ice-candidate", data.candidate);
+
+    });
+
+
+    // =========================
+    // RENEGOTIATION OFFER (for screen share)
+    // =========================
+    socket.on("renegotiate-offer", (data) => {
+
+      socket.to(data.roomId).emit("renegotiate-offer", data.offer);
+
+    });
+
+
+    // =========================
+    // RENEGOTIATION ANSWER
+    // =========================
+    socket.on("renegotiate-answer", (data) => {
+
+      socket.to(data.roomId).emit("renegotiate-answer", data.answer);
 
     });
 

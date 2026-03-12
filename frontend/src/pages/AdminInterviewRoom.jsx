@@ -7,166 +7,197 @@ const socket = io("https://real-time-coding-interview-h6in.onrender.com");
 
 export default function AdminInterviewRoom() {
 
-  const { roomId } = useParams();
+const { roomId } = useParams();
 
-  const localVideo = useRef();
-  const remoteVideo = useRef();
-  const peerConnection = useRef();
-  const localStream = useRef();
+const localVideo = useRef();
+const remoteVideo = useRef();
+const screenVideo = useRef();
 
-  const [task,setTask] = useState("");
-  const [candidateCode,setCandidateCode] = useState("");
+const peerConnection = useRef();
+const localStream = useRef();
 
-  useEffect(() => {
+const [task,setTask] = useState("");
+const [candidateCode,setCandidateCode] = useState("");
+const [screenActive,setScreenActive] = useState(false);
 
-    startVideo();
+useEffect(()=>{
 
-    socket.on("receive-submission",(data)=>{
-      setCandidateCode(data.code);
-    });
+startVideo();
 
-  }, []);
+socket.on("receive-submission",(data)=>{
+setCandidateCode(data.code);
+});
 
-  const startVideo = async () => {
+},[]);
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video:true,
-      audio:true
-    });
+const startVideo = async ()=>{
 
-    localStream.current = stream;
+const stream = await navigator.mediaDevices.getUserMedia({
+video:true,
+audio:true
+});
 
-    localVideo.current.srcObject = stream;
+localStream.current = stream;
+localVideo.current.srcObject = stream;
 
-    socket.emit("join-room",roomId);
+socket.emit("join-room",roomId);
 
-    peerConnection.current = new RTCPeerConnection();
+peerConnection.current = new RTCPeerConnection();
 
-    stream.getTracks().forEach(track=>{
-      peerConnection.current.addTrack(track,stream);
-    });
+stream.getTracks().forEach(track=>{
+peerConnection.current.addTrack(track,stream);
+});
 
-    peerConnection.current.ontrack = (event)=>{
-      remoteVideo.current.srcObject = event.streams[0];
-    };
+peerConnection.current.ontrack=(event)=>{
 
-    peerConnection.current.onicecandidate = (event)=>{
-      if(event.candidate){
-        socket.emit("ice-candidate",{roomId,candidate:event.candidate});
-      }
-    };
+const stream = event.streams[0];
 
-    socket.on("user-joined",async()=>{
+if(!remoteVideo.current.srcObject){
+remoteVideo.current.srcObject = stream;
+}else{
+screenVideo.current.srcObject = stream;
+setScreenActive(true);
+}
 
-      const offer = await peerConnection.current.createOffer();
+};
 
-      await peerConnection.current.setLocalDescription(offer);
+peerConnection.current.onicecandidate=(event)=>{
+if(event.candidate){
+socket.emit("ice-candidate",{roomId,candidate:event.candidate});
+}
+};
 
-      socket.emit("offer",{roomId,offer});
+peerConnection.current.onnegotiationneeded = async () => {
 
-    });
+const offer = await peerConnection.current.createOffer();
 
-    socket.on("answer",async(answer)=>{
-      await peerConnection.current.setRemoteDescription(answer);
-    });
+await peerConnection.current.setLocalDescription(offer);
 
-    socket.on("ice-candidate",async(candidate)=>{
-      await peerConnection.current.addIceCandidate(candidate);
-    });
+socket.emit("offer",{roomId,offer});
 
-  };
+};
 
-  socket.on("offer", async (offer) => {
+socket.on("user-joined",async()=>{
 
-    await peerConnection.current.setRemoteDescription(offer);
+const offer = await peerConnection.current.createOffer();
 
-    const answer = await peerConnection.current.createAnswer();
+await peerConnection.current.setLocalDescription(offer);
 
-    await peerConnection.current.setLocalDescription(answer);
+socket.emit("offer",{roomId,offer});
 
-    socket.emit("answer", { roomId, answer });
+});
 
-  });
+socket.on("answer",async(answer)=>{
+await peerConnection.current.setRemoteDescription(answer);
+});
 
-  // SCREEN SHARE
-  const shareScreen = async () => {
+socket.on("ice-candidate",async(candidate)=>{
+await peerConnection.current.addIceCandidate(candidate);
+});
 
-    const screenStream = await navigator.mediaDevices.getDisplayMedia({
-      video:true
-    });
+};
 
-    const screenTrack = screenStream.getVideoTracks()[0];
+socket.on("offer", async (offer) => {
 
-    const sender = peerConnection.current
-      .getSenders()
-      .find(s => s.track.kind === "video");
+await peerConnection.current.setRemoteDescription(offer);
 
-    sender.replaceTrack(screenTrack);
+const answer = await peerConnection.current.createAnswer();
 
-    screenTrack.onended = ()=>{
-      sender.replaceTrack(localStream.current.getVideoTracks()[0]);
-    };
+await peerConnection.current.setLocalDescription(answer);
 
-  };
+socket.emit("answer",{roomId,answer});
 
-  const assignTask = ()=>{
-    socket.emit("assign-task",{roomId,task});
-  };
+});
 
-  return(
+const shareScreen = async ()=>{
 
-  <div style={{padding:"20px"}}>
+const screenStream = await navigator.mediaDevices.getDisplayMedia({
+video:true
+});
 
-    <h2>Admin Interview Room</h2>
+const screenTrack = screenStream.getVideoTracks()[0];
 
-    <div style={{display:"flex",gap:"40px"}}>
+peerConnection.current.addTrack(screenTrack,screenStream);
 
-      <div>
-        <h4>Admin Camera</h4>
-        <video ref={localVideo} autoPlay playsInline muted width="300"/>
-      </div>
+setScreenActive(true);
 
-      <div>
-        <h4>Candidate Camera</h4>
-        <video ref={remoteVideo} autoPlay playsInline width="300"/>
-      </div>
+};
 
-    </div>
+const assignTask = ()=>{
+socket.emit("assign-task",{roomId,task});
+};
 
-    <br/>
+return(
 
-    <button onClick={shareScreen}>
-      Share Screen
-    </button>
+<div style={{padding:"20px"}}>
 
-    <hr/>
+<h2>Admin Interview Room</h2>
 
-    <h3>Assign Task</h3>
+<div style={{display:"flex",gap:"40px"}}>
 
-    <textarea
-      rows="4"
-      style={{width:"400px"}}
-      onChange={(e)=>setTask(e.target.value)}
-    />
+<div>
+<h4>Admin Camera</h4>
+<video ref={localVideo} autoPlay muted width="250"/>
+</div>
 
-    <br/>
+<div>
+<h4>Candidate Camera</h4>
+<video ref={remoteVideo} autoPlay width="250"/>
+</div>
 
-    <button onClick={assignTask}>
-      Send Task
-    </button>
+</div>
 
-    <hr/>
+{screenActive && (
 
-    <h3>Candidate Submission</h3>
+<div style={{marginTop:"20px"}}>
 
-    <Editor
-      height="400px"
-      defaultLanguage="javascript"
-      value={candidateCode}
-    />
+<h4>Shared Screen</h4>
 
-  </div>
+<video
+ref={screenVideo}
+autoPlay
+playsInline
+width="600"
+/>
 
-  );
+</div>
+
+)}
+
+<br/>
+
+<button onClick={shareScreen}>
+Share Screen
+</button>
+
+<hr/>
+
+<h3>Assign Task</h3>
+
+<textarea
+rows="4"
+style={{width:"400px"}}
+onChange={(e)=>setTask(e.target.value)}
+/>
+
+<br/>
+
+<button onClick={assignTask}>
+Send Task
+</button>
+
+<hr/>
+
+<h3>Candidate Submission</h3>
+
+<Editor
+height="400px"
+defaultLanguage="javascript"
+value={candidateCode}
+/>
+
+</div>
+
+);
 
 }
