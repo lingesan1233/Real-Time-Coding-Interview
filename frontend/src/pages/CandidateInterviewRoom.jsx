@@ -14,14 +14,12 @@ const remoteVideo = useRef();
 const screenVideo = useRef();
 
 const peerConnection = useRef();
-const localStream = useRef();
 
 const [task,setTask] = useState("");
 const [code,setCode] = useState("");
 const [screenActive,setScreenActive] = useState(false);
 
 useEffect(()=>{
-
 startVideo();
 
 socket.on("receive-task",(task)=>{
@@ -32,27 +30,24 @@ setTask(task);
 
 const startVideo = async ()=>{
 
-// Get camera
+// get candidate camera
 const stream = await navigator.mediaDevices.getUserMedia({
 video:true,
 audio:true
 });
 
-localStream.current = stream;
 localVideo.current.srcObject = stream;
 
-socket.emit("join-room",roomId);
-
-// Create peer connection
+// create peer connection
 peerConnection.current = new RTCPeerConnection();
 
-// Send local tracks
+// add local tracks
 stream.getTracks().forEach(track=>{
 peerConnection.current.addTrack(track,stream);
 });
 
-// Receive remote tracks
-peerConnection.current.ontrack=(event)=>{
+// receive admin camera / screen
+peerConnection.current.ontrack = (event)=>{
 
 const incomingStream = event.streams[0];
 
@@ -65,48 +60,53 @@ setScreenActive(true);
 
 };
 
-// ICE candidates
-peerConnection.current.onicecandidate=(event)=>{
+// send ICE candidates
+peerConnection.current.onicecandidate = (event)=>{
 if(event.candidate){
 socket.emit("ice-candidate",{roomId,candidate:event.candidate});
 }
 };
 
-// When admin joins create offer
-socket.on("user-joined", async ()=>{
+// join room
+socket.emit("join-room",roomId);
 
-const offer = await peerConnection.current.createOffer();
-await peerConnection.current.setLocalDescription(offer);
 
-socket.emit("offer",{roomId,offer});
+// =========================
+// RECEIVE ADMIN OFFER
+// =========================
 
-});
-
-// Receive offer
 socket.on("offer", async (offer)=>{
 
 await peerConnection.current.setRemoteDescription(offer);
 
 const answer = await peerConnection.current.createAnswer();
+
 await peerConnection.current.setLocalDescription(answer);
 
 socket.emit("answer",{roomId,answer});
 
 });
 
-// Receive answer
-socket.on("answer", async (answer)=>{
-await peerConnection.current.setRemoteDescription(answer);
-});
 
-// ICE candidate
+// =========================
+// RECEIVE ICE
+// =========================
+
 socket.on("ice-candidate", async (candidate)=>{
+try{
 await peerConnection.current.addIceCandidate(candidate);
+}catch(e){
+console.error(e);
+}
 });
 
 };
 
-// Screen share
+
+// =========================
+// SCREEN SHARE
+// =========================
+
 const shareScreen = async ()=>{
 
 const screenStream = await navigator.mediaDevices.getDisplayMedia({
@@ -121,7 +121,11 @@ setScreenActive(true);
 
 };
 
-// Submit code
+
+// =========================
+// SUBMIT CODE
+// =========================
+
 const submitCode = ()=>{
 socket.emit("submit-code",{roomId,code});
 };
