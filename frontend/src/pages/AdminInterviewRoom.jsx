@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import io from "socket.io-client";
+import Editor from "@monaco-editor/react";
 
 const socket = io("https://real-time-coding-interview-h6in.onrender.com");
 
@@ -10,12 +11,18 @@ export default function AdminInterviewRoom() {
 
   const localVideo = useRef();
   const remoteVideo = useRef();
-
   const peerConnection = useRef();
+
+  const [task,setTask] = useState("");
+  const [candidateCode,setCandidateCode] = useState("");
 
   useEffect(() => {
 
     startVideo();
+
+    socket.on("receive-submission",(data)=>{
+      setCandidateCode(data.code);
+    });
 
   }, []);
 
@@ -81,9 +88,29 @@ export default function AdminInterviewRoom() {
 
   });
 
+  const assignTask = () => {
+    socket.emit("assign-task",{roomId,task});
+  };
+
+  const shareScreen = async () => {
+
+    const screenStream = await navigator.mediaDevices.getDisplayMedia({
+      video:true
+    });
+
+    const screenTrack = screenStream.getTracks()[0];
+
+    const sender = peerConnection.current.getSenders().find(
+      s => s.track.kind === "video"
+    );
+
+    sender.replaceTrack(screenTrack);
+
+  };
+
   return (
 
-    <div>
+    <div style={{padding:"20px"}}>
 
       <h2>Admin Interview Room</h2>
 
@@ -100,6 +127,36 @@ export default function AdminInterviewRoom() {
         </div>
 
       </div>
+
+      <br/>
+
+      <button onClick={shareScreen}>Share Screen</button>
+
+      <hr/>
+
+      <h3>Assign Task</h3>
+
+      <textarea
+        rows="4"
+        style={{width:"400px"}}
+        onChange={(e)=>setTask(e.target.value)}
+      />
+
+      <br/>
+
+      <button onClick={assignTask}>
+        Send Task
+      </button>
+
+      <hr/>
+
+      <h3>Candidate Submission</h3>
+
+      <Editor
+        height="400px"
+        defaultLanguage="javascript"
+        value={candidateCode}
+      />
 
     </div>
 
