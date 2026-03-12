@@ -11,15 +11,18 @@ const {roomId} = useParams();
 
 const localVideo = useRef();
 const remoteVideo = useRef();
-const screenVideo = useRef();
 
 const peerConnection = useRef();
+const localStream = useRef();
 
 const [task,setTask] = useState("");
 const [code,setCode] = useState("");
-const [screenActive,setScreenActive] = useState(false);
+
+const [cameraOn,setCameraOn] = useState(true);
+const [micOn,setMicOn] = useState(true);
 
 useEffect(()=>{
+
 startVideo();
 
 socket.on("receive-task",(task)=>{
@@ -35,6 +38,7 @@ video:true,
 audio:true
 });
 
+localStream.current = stream;
 localVideo.current.srcObject = stream;
 
 peerConnection.current = new RTCPeerConnection();
@@ -43,22 +47,8 @@ stream.getTracks().forEach(track=>{
 peerConnection.current.addTrack(track,stream);
 });
 
-peerConnection.current.ontrack = (event)=>{
-
-const track = event.track;
-const stream = new MediaStream([track]);
-
-if(track.kind === "video"){
-
-if(!remoteVideo.current.srcObject){
-remoteVideo.current.srcObject = stream;
-}else{
-screenVideo.current.srcObject = stream;
-setScreenActive(true);
-}
-
-}
-
+peerConnection.current.ontrack=(event)=>{
+remoteVideo.current.srcObject = event.streams[0];
 };
 
 peerConnection.current.onicecandidate=(event)=>{
@@ -81,49 +71,27 @@ socket.emit("answer",{roomId,answer});
 
 });
 
-socket.on("answer", async (answer)=>{
-await peerConnection.current.setRemoteDescription(answer);
-});
-
-socket.on("ice-candidate", async (candidate)=>{
+socket.on("ice-candidate",async(candidate)=>{
 await peerConnection.current.addIceCandidate(candidate);
-});
-
-socket.on("renegotiate-offer", async (offer)=>{
-
-await peerConnection.current.setRemoteDescription(offer);
-
-const answer = await peerConnection.current.createAnswer();
-
-await peerConnection.current.setLocalDescription(answer);
-
-socket.emit("renegotiate-answer",{roomId,answer});
-
-});
-
-socket.on("renegotiate-answer", async (answer)=>{
-await peerConnection.current.setRemoteDescription(answer);
 });
 
 };
 
-const shareScreen = async ()=>{
+const toggleCamera = ()=>{
 
-const screenStream = await navigator.mediaDevices.getDisplayMedia({
-video:true
-});
+localStream.current.getVideoTracks()[0].enabled =
+!localStream.current.getVideoTracks()[0].enabled;
 
-const screenTrack = screenStream.getVideoTracks()[0];
+setCameraOn(localStream.current.getVideoTracks()[0].enabled);
 
-peerConnection.current.addTrack(screenTrack,screenStream);
+};
 
-const offer = await peerConnection.current.createOffer();
+const toggleMic = ()=>{
 
-await peerConnection.current.setLocalDescription(offer);
+localStream.current.getAudioTracks()[0].enabled =
+!localStream.current.getAudioTracks()[0].enabled;
 
-socket.emit("renegotiate-offer",{roomId,offer});
-
-setScreenActive(true);
+setMicOn(localStream.current.getAudioTracks()[0].enabled);
 
 };
 
@@ -151,28 +119,14 @@ return(
 
 </div>
 
-{screenActive && (
-
-<div style={{marginTop:"20px"}}>
-
-<h4>Shared Screen</h4>
-
-<video ref={screenVideo} autoPlay playsInline width="650"/>
-
 <br/>
 
-<button onClick={()=>screenVideo.current.requestFullscreen()}>
-Maximize Screen
+<button onClick={toggleCamera}>
+{cameraOn ? "Turn Camera Off" : "Turn Camera On"}
 </button>
 
-</div>
-
-)}
-
-<br/>
-
-<button onClick={shareScreen}>
-Share Screen
+<button onClick={toggleMic} style={{marginLeft:"10px"}}>
+{micOn ? "Mute Mic" : "Unmute Mic"}
 </button>
 
 <hr/>
