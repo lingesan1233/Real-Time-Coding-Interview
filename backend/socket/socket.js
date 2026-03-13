@@ -23,8 +23,6 @@ module.exports = function (io) {
     // =========================
     socket.on("assign-task", (data) => {
 
-      console.log("Task assigned:", data.task);
-
       io.to(data.roomId).emit("receive-task", data.task);
 
     });
@@ -34,8 +32,6 @@ module.exports = function (io) {
     // CANDIDATE SUBMITS CODE
     // =========================
     socket.on("submit-code", (data) => {
-
-      console.log("Candidate submitted code:", data.code);
 
       io.to(data.roomId).emit("receive-submission", data);
 
@@ -73,17 +69,13 @@ module.exports = function (io) {
 
 
     // =========================
-    // SCREEN SHARE RENEGOTIATION
+    // END CALL
     // =========================
-    socket.on("renegotiate-offer", (data) => {
+    socket.on("end-call", (roomId) => {
 
-      socket.to(data.roomId).emit("renegotiate-offer", data.offer);
+      console.log("Call ended in room:", roomId);
 
-    });
-
-    socket.on("renegotiate-answer", (data) => {
-
-      socket.to(data.roomId).emit("renegotiate-answer", data.answer);
+      socket.to(roomId).emit("call-ended");
 
     });
 
@@ -100,8 +92,3 @@ module.exports = function (io) {
   });
 
 };
-socket.on("end-call", (roomId) => {
-
-  socket.to(roomId).emit("call-ended");
-
-});
