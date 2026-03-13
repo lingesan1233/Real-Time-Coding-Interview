@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
 
@@ -9,42 +9,50 @@ import CandidateDashboard from "./pages/CandidateDashboard";
 import AdminInterviewRoom from "./pages/AdminInterviewRoom";
 import CandidateInterviewRoom from "./pages/CandidateInterviewRoom";
 
-function App() {
+function Layout() {
 
+  const location = useLocation();
   const user = JSON.parse(localStorage.getItem("user"));
 
+  const showNavbar = user && location.pathname !== "/";
+
   return (
-    <BrowserRouter>
+    <>
 
-      {user && <Navbar />}
+      {showNavbar && <Navbar />}
 
-      <Routes>
+      <div style={{ paddingTop: showNavbar ? "70px" : "0px" }}>
 
-        {/* Login */}
-        <Route path="/" element={<Login />} />
+        <Routes>
 
-        {/* Admin Dashboard */}
-        <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/" element={<Login />} />
 
-        {/* Candidate Dashboard */}
-        <Route path="/candidate" element={<CandidateDashboard />} />
+          <Route path="/admin" element={<AdminDashboard />} />
 
-        {/* Admin Interview Room */}
-        <Route
-          path="/admin-room/:roomId"
-          element={<AdminInterviewRoom />}
-        />
+          <Route path="/candidate" element={<CandidateDashboard />} />
 
-        {/* Candidate Interview Room */}
-        <Route
-          path="/candidate-room/:roomId"
-          element={<CandidateInterviewRoom />}
-        />
+          <Route
+            path="/admin-room/:roomId"
+            element={<AdminInterviewRoom />}
+          />
 
-      </Routes>
+          <Route
+            path="/candidate-room/:roomId"
+            element={<CandidateInterviewRoom />}
+          />
 
-    </BrowserRouter>
+        </Routes>
+
+      </div>
+
+    </>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Layout />
+    </BrowserRouter>
+  );
+}

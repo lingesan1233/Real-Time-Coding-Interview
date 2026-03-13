@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 import Editor from "@monaco-editor/react";
 
@@ -8,6 +8,7 @@ const socket = io("https://real-time-coding-interview-h6in.onrender.com");
 export default function AdminInterviewRoom(){
 
 const { roomId } = useParams();
+const navigate = useNavigate();
 
 const localVideo = useRef();
 const remoteVideo = useRef();
@@ -27,6 +28,11 @@ startVideo();
 
 socket.on("receive-submission",(data)=>{
 setCandidateCode(data.code);
+});
+
+socket.on("call-ended",()=>{
+alert("Candidate left the interview");
+navigate("/admin");
 });
 
 },[]);
@@ -62,7 +68,6 @@ socket.emit("join-room",roomId);
 socket.on("user-joined",async()=>{
 
 const offer = await peerConnection.current.createOffer();
-
 await peerConnection.current.setLocalDescription(offer);
 
 socket.emit("offer",{roomId,offer});
@@ -84,7 +89,6 @@ socket.on("offer", async (offer)=>{
 await peerConnection.current.setRemoteDescription(offer);
 
 const answer = await peerConnection.current.createAnswer();
-
 await peerConnection.current.setLocalDescription(answer);
 
 socket.emit("answer",{roomId,answer});
@@ -93,24 +97,40 @@ socket.emit("answer",{roomId,answer});
 
 const toggleCamera = ()=>{
 
-localStream.current.getVideoTracks()[0].enabled =
-!localStream.current.getVideoTracks()[0].enabled;
+const track = localStream.current.getVideoTracks()[0];
+track.enabled = !track.enabled;
 
-setCameraOn(localStream.current.getVideoTracks()[0].enabled);
+setCameraOn(track.enabled);
 
 };
 
 const toggleMic = ()=>{
 
-localStream.current.getAudioTracks()[0].enabled =
-!localStream.current.getAudioTracks()[0].enabled;
+const track = localStream.current.getAudioTracks()[0];
+track.enabled = !track.enabled;
 
-setMicOn(localStream.current.getAudioTracks()[0].enabled);
+setMicOn(track.enabled);
 
 };
 
 const assignTask = ()=>{
 socket.emit("assign-task",{roomId,task});
+};
+
+const endCall = ()=>{
+
+if(localStream.current){
+localStream.current.getTracks().forEach(track=>track.stop());
+}
+
+if(peerConnection.current){
+peerConnection.current.close();
+}
+
+socket.emit("end-call",roomId);
+
+navigate("/admin");
+
 };
 
 return(
@@ -141,6 +161,21 @@ return(
 
 <button onClick={toggleMic} style={{marginLeft:"10px"}}>
 {micOn ? "Mute Mic" : "Unmute Mic"}
+</button>
+
+<button
+onClick={endCall}
+style={{
+marginLeft:"10px",
+background:"#ef4444",
+color:"white",
+padding:"8px 12px",
+border:"none",
+borderRadius:"6px",
+cursor:"pointer"
+}}
+>
+End Interview
 </button>
 
 <hr/>

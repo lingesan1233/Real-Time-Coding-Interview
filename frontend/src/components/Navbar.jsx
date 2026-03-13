@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 export default function Navbar() {
 
   const navigate = useNavigate();
-
   const user = JSON.parse(localStorage.getItem("user"));
 
   const logout = () => {
@@ -15,9 +14,11 @@ export default function Navbar() {
   return (
     <nav style={styles.nav}>
 
-      <h2>Interview Platform</h2>
+      <div style={styles.logo}>
+        Interview Platform
+      </div>
 
-      <div>
+      <div style={styles.right}>
 
         {user?.role === "admin" && (
           <Link to="/admin" style={styles.link}>
@@ -31,9 +32,11 @@ export default function Navbar() {
           </Link>
         )}
 
-        <button onClick={logout} style={styles.btn}>
-          Logout
-        </button>
+        {user && (
+          <button onClick={logout} style={styles.btn}>
+            Logout
+          </button>
+        )}
 
       </div>
 
@@ -42,20 +45,50 @@ export default function Navbar() {
 }
 
 const styles = {
+
   nav: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "65px",
     display: "flex",
     justifyContent: "space-between",
-    padding: "15px",
-    background: "#222",
-    color: "white"
-  },
-  link: {
-    marginRight: "20px",
+    alignItems: "center",
+    padding: "0 20px",
+    background: "#0f172a",
     color: "white",
-    textDecoration: "none"
+    boxSizing: "border-box",
+    zIndex: 999
   },
+
+  logo: {
+    fontSize: "20px",
+    fontWeight: "700"
+  },
+
+  right: {
+    display: "flex",
+    alignItems: "center",
+    gap: "20px",
+    flexWrap: "wrap"
+  },
+
+  link: {
+    textDecoration: "none",
+    color: "#e2e8f0",
+    fontWeight: "500",
+    fontSize: "14px"
+  },
+
   btn: {
-    padding: "6px 10px",
-    cursor: "pointer"
+    padding: "8px 16px",
+    background: "#6366f1",
+    border: "none",
+    borderRadius: "6px",
+    color: "white",
+    cursor: "pointer",
+    fontWeight: "500"
   }
+
 };

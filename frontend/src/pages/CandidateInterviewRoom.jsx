@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 import Editor from "@monaco-editor/react";
 
 const socket = io("https://real-time-coding-interview-h6in.onrender.com");
 
-export default function CandidateInterviewRoom(){
+export default function AdminInterviewRoom(){
 
-const {roomId} = useParams();
+const { roomId } = useParams();
+const navigate = useNavigate();
 
 const localVideo = useRef();
 const remoteVideo = useRef();
@@ -16,7 +17,7 @@ const peerConnection = useRef();
 const localStream = useRef();
 
 const [task,setTask] = useState("");
-const [code,setCode] = useState("");
+const [candidateCode,setCandidateCode] = useState("");
 
 const [cameraOn,setCameraOn] = useState(true);
 const [micOn,setMicOn] = useState(true);
@@ -25,8 +26,13 @@ useEffect(()=>{
 
 startVideo();
 
-socket.on("receive-task",(task)=>{
-setTask(task);
+socket.on("receive-submission",(data)=>{
+setCandidateCode(data.code);
+});
+
+socket.on("call-ended",()=>{
+alert("Candidate left the interview");
+navigate("/admin");
 });
 
 },[]);
@@ -59,16 +65,17 @@ socket.emit("ice-candidate",{roomId,candidate:event.candidate});
 
 socket.emit("join-room",roomId);
 
-socket.on("offer", async (offer)=>{
+socket.on("user-joined",async()=>{
 
-await peerConnection.current.setRemoteDescription(offer);
+const offer = await peerConnection.current.createOffer();
+await peerConnection.current.setLocalDescription(offer);
 
-const answer = await peerConnection.current.createAnswer();
+socket.emit("offer",{roomId,offer});
 
-await peerConnection.current.setLocalDescription(answer);
+});
 
-socket.emit("answer",{roomId,answer});
-
+socket.on("answer",async(answer)=>{
+await peerConnection.current.setRemoteDescription(answer);
 });
 
 socket.on("ice-candidate",async(candidate)=>{
@@ -77,43 +84,70 @@ await peerConnection.current.addIceCandidate(candidate);
 
 };
 
+socket.on("offer", async (offer)=>{
+
+await peerConnection.current.setRemoteDescription(offer);
+
+const answer = await peerConnection.current.createAnswer();
+await peerConnection.current.setLocalDescription(answer);
+
+socket.emit("answer",{roomId,answer});
+
+});
+
 const toggleCamera = ()=>{
 
-localStream.current.getVideoTracks()[0].enabled =
-!localStream.current.getVideoTracks()[0].enabled;
+const track = localStream.current.getVideoTracks()[0];
+track.enabled = !track.enabled;
 
-setCameraOn(localStream.current.getVideoTracks()[0].enabled);
+setCameraOn(track.enabled);
 
 };
 
 const toggleMic = ()=>{
 
-localStream.current.getAudioTracks()[0].enabled =
-!localStream.current.getAudioTracks()[0].enabled;
+const track = localStream.current.getAudioTracks()[0];
+track.enabled = !track.enabled;
 
-setMicOn(localStream.current.getAudioTracks()[0].enabled);
+setMicOn(track.enabled);
 
 };
 
-const submitCode = ()=>{
-socket.emit("submit-code",{roomId,code});
+const assignTask = ()=>{
+socket.emit("assign-task",{roomId,task});
+};
+
+const endCall = ()=>{
+
+if(localStream.current){
+localStream.current.getTracks().forEach(track=>track.stop());
+}
+
+if(peerConnection.current){
+peerConnection.current.close();
+}
+
+socket.emit("end-call",roomId);
+
+navigate("/admin");
+
 };
 
 return(
 
 <div style={{padding:"20px"}}>
 
-<h2>Candidate Interview Room</h2>
+<h2>Admin Interview Room</h2>
 
 <div style={{display:"flex",gap:"40px"}}>
 
 <div>
-<h4>Your Camera</h4>
+<h4>Admin Camera</h4>
 <video ref={localVideo} autoPlay playsInline muted width="250"/>
 </div>
 
 <div>
-<h4>Admin Camera</h4>
+<h4>Candidate Camera</h4>
 <video ref={remoteVideo} autoPlay playsInline width="250"/>
 </div>
 
@@ -129,26 +163,46 @@ return(
 {micOn ? "Mute Mic" : "Unmute Mic"}
 </button>
 
+<button
+onClick={endCall}
+style={{
+marginLeft:"10px",
+background:"#ef4444",
+color:"white",
+padding:"8px 12px",
+border:"none",
+borderRadius:"6px",
+cursor:"pointer"
+}}
+>
+End Interview
+</button>
+
 <hr/>
 
-<h3>Task</h3>
+<h3>Assign Task</h3>
 
-<div style={{background:"#eee",padding:"10px"}}>
-{task || "Waiting for admin task"}
-</div>
+<textarea
+rows="4"
+style={{width:"400px"}}
+onChange={(e)=>setTask(e.target.value)}
+/>
+
+<br/>
+
+<button onClick={assignTask}>
+Send Task
+</button>
 
 <hr/>
+
+<h3>Candidate Submission</h3>
 
 <Editor
 height="400px"
 defaultLanguage="javascript"
-value={code}
-onChange={(v)=>setCode(v)}
+value={candidateCode}
 />
-
-<button onClick={submitCode}>
-Submit Answer
-</button>
 
 </div>
 
