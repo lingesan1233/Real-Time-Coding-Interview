@@ -20,7 +20,7 @@ export default function Navbar() {
 
       <div style={styles.right}>
 
-        {user?.role === "admin" && (
+       {/*{user?.role === "admin" && (
           <Link to="/admin" style={styles.link}>
             Admin Dashboard
           </Link>
@@ -30,7 +30,7 @@ export default function Navbar() {
           <Link to="/candidate" style={styles.link}>
             Candidate Dashboard
           </Link>
-        )}
+        )}*/}
 
         {user && (
           <button onClick={logout} style={styles.btn}>
